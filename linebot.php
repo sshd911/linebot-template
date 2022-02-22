@@ -1,5 +1,5 @@
 <?php
-$accessToken = '/QeUtb/mPtGTJMSCp4Uo+msLGBHzsDpAWkfpYQKNyb+OIs6dlw7aVmxoydqHjOhB4dHTnpM1SWUreIRXBCC77WpI8psCrGmeogibeQpco++P+8vV37fi5GWThNwh3CimYhaeMbJuxxB4H1bcES4/dgdB04t89/1O/w1cDnyilFU=';
+$accessToken = 'ここにチャンネルアクセストークンを入れて下さい';
 
 //ユーザーからのメッセージ取得
 $json_string = file_get_contents('php://input');
@@ -10,20 +10,18 @@ $replyToken = $json_object->{"events"}[0]->{"replyToken"};             //返信�
 $message_type = $json_object->{"events"}[0]->{"message"}->{"type"};    //メッセージタイプ
 $message_text = $json_object->{"events"}[0]->{"message"}->{"text"};    //メッセージ内容
 
-//メッセージタイプが「text」以外、4文字以外、かつ数値以外の場合何もせずに終了
-if ($message_type != "text" && mb_strlen($message_text) == 4  && !is_numeric($message_text)) exit;
+//メッセージタイプが「text」以外、かつ数値以外の場合、かつ4文字の場合は何もせずに終了
+if ($message_type != "text" && !is_numeric($message_text) && mb_strlen($message_text) == 4 ) exit;
 
 // バスの時間を求める処理 
 function getTime($message_text, $busTime, $callback)
 {
     $i = 0;
     $time = '';
-    $checkTime = '';
 
-    // 入力された時間がバスの時刻表の時刻より過ぎた地点−1の地点（時刻）を出力。処理が複雑且つ、正確な時刻が出力されないパターンがあるため今後修正予定
+    // 入力された時間がバスの時刻表の時刻より過ぎた地点−1の地点（時刻）を出力。バスの時刻ー到着したい時間＝最適なバスの時間
     for ($i; $i <= count($busTime); $i++) {
-        $checkTime = $busTime[$i];
-        if ($message_text <= $checkTime) {
+        if ($message_text <= $busTime[$i]) { 
             $time = $busTime[$i - 1];
         } else {
             continue;
@@ -33,7 +31,7 @@ function getTime($message_text, $busTime, $callback)
     return $callback($time);
 };
 
-// バスの時刻表 dbには接続していません。今後気が向いたらデータベースと繋いで、フォームから入力できるようにする予定です。
+// バスの時刻表 dbには接続していないため、ここに時刻表を入力して下さい
 $busTime = [
     '0800',
     '0850',
@@ -66,7 +64,7 @@ function formater($formated)
 // バスの時刻の計算とフォーマット
 $busTimeResult = getTime($message_text, $busTime, "formater");
 
-// 夜遅いか確認 php.iniの設定値により９時間遅れのため22-9で13となっています
+// 夜遅いか確認。22時以降は一言付け加える。 php.iniの設定値により日本の時間より９時間遅れのため、22-9で13となっています
 function check() {
     $now = date('H');
     if($now >= 13) {
