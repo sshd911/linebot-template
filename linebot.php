@@ -1,5 +1,5 @@
 <?php
-$accessToken = 'ここにチャンネルアクセストークンを入れて下さい';
+$accessToken = '/QeUtb/mPtGTJMSCp4Uo+msLGBHzsDpAWkfpYQKNyb+OIs6dlw7aVmxoydqHjOhB4dHTnpM1SWUreIRXBCC77WpI8psCrGmeogibeQpco++P+8vV37fi5GWThNwh3CimYhaeMbJuxxB4H1bcES4/dgdB04t89/1O/w1cDnyilFU=';
 
 //ユーザーからのメッセージ取得
 $json_string = file_get_contents('php://input');
@@ -10,29 +10,7 @@ $replyToken = $json_object->{"events"}[0]->{"replyToken"};             //返信�
 $message_type = $json_object->{"events"}[0]->{"message"}->{"type"};    //メッセージタイプ
 $message_text = $json_object->{"events"}[0]->{"message"}->{"text"};    //メッセージ内容
 
-//メッセージタイプが「text」以外、かつ数値以外の場合、かつ4文字の場合は何もせずに終了
-if ($message_type != "text" && !is_numeric($message_text) && mb_strlen($message_text) == 4 ) exit;
-
-// バスの時間を求める処理 
-function getTime($message_text, $busTime, $callback)
-{
-    $i = 0;
-    $time = '';
-
-    // 入力された時間がバスの時刻表の時刻より過ぎた地点−1の地点（時刻）を出力。バスの時刻ー到着したい時間＝最適なバスの時間
-    for ($i; $i <= count($busTime); $i++) {
-        if ($message_text <= $busTime[$i]) { 
-            $time = $busTime[$i - 1];
-        } else {
-            continue;
-        }
-        break;
-    }
-    return $callback($time);
-};
-
-// バスの時刻表 dbには接続していないため、ここに時刻表を入力して下さい
-$busTime = [
+$busTime = [ //バスの時間表
     '0800',
     '0850',
     '0930',
@@ -48,7 +26,31 @@ $busTime = [
     '1904',
 ];
 
-// 時刻のフォーマット　ここでは入力された時間とバスの時刻の両方をフォーマットします
+if($message_text == 'おい') {　　//　隠しコマンド-----「おい」　が入力されるとバスの時間表が出力される
+  $return_message_text = implode(PHP_EOL,$busTime);
+  sending_messages($accessToken, $replyToken, $message_type, $return_message_text);
+}
+
+//メッセージタイプが「text」以外、数値以外、かつ英語などの文字列4文字の場合は何もせずに終了
+if ($message_type != "text" && !is_numeric($message_text) && mb_strlen($message_text) == 4 ) exit;
+
+// バスの時間を求める処理-----入力された時間がバスの時刻表の時刻より過ぎた地点−1の地点（時刻）を出力。バスの時刻ー到着したい時間＝最適なバスの時間
+function getTime($message_text, $busTime, $callback)
+{
+    $i = 0;
+    $time = '';
+    for ($i; $i <= count($busTime); $i++) {
+        if ($message_text <= $busTime[$i]) { 
+            $time = $busTime[$i - 1];
+        } else {
+            continue;
+        }
+        break;
+    }
+    return $callback($time);
+};
+
+// 時刻のフォーマット-----ここでは入力された時間とバスの時刻の両方をフォーマットします
 function formater($formated)
 {
     if (mb_strlen($formated) == 4) {
@@ -64,10 +66,9 @@ function formater($formated)
 // バスの時刻の計算とフォーマット
 $busTimeResult = getTime($message_text, $busTime, "formater");
 
-// 夜遅いか確認。22時以降は一言付け加える。 php.iniの設定値により日本の時間より９時間遅れのため、22-9で13となっています
 function check() {
     $now = date('H');
-    if($now >= 13) {
+    if($now >= 21) {
     return "夜分遅くに";
     }
 }
