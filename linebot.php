@@ -1,5 +1,5 @@
 <?php
-$accessToken = '/QeUtb/mPtGTJMSCp4Uo+msLGBHzsDpAWkfpYQKNyb+OIs6dlw7aVmxoydqHjOhB4dHTnpM1SWUreIRXBCC77WpI8psCrGmeogibeQpco++P+8vV37fi5GWThNwh3CimYhaeMbJuxxB4H1bcES4/dgdB04t89/1O/w1cDnyilFU=';
+$accessToken = '';
 
 //ユーザーからのメッセージ取得
 $json_string = file_get_contents('php://input');
@@ -9,8 +9,8 @@ $json_object = json_decode($json_string);
 $replyToken = $json_object->{"events"}[0]->{"replyToken"};             //返信用トークン
 $message_type = $json_object->{"events"}[0]->{"message"}->{"type"};    //メッセージタイプ
 $message_text = $json_object->{"events"}[0]->{"message"}->{"text"};    //メッセージ内容
-
-$busTime = [ //バスの時間表
+// 平日のバスの時刻表
+$busTime = [
     '0800',
     '0850',
     '0930',
@@ -25,20 +25,48 @@ $busTime = [ //バスの時間表
     '1824',
     '1904',
 ];
+// 祝日のバスの時刻表
+$holidayBusTime = [
+  '0800',
+  '0925',
+  '1025',
+  '1214',
+  '1307',
+  '1357',
+  '1447',
+  '1627',
+  '1717',
+  '1800',
+  '1900',
+];
 
-if($message_text == 'おい') {　　//　隠しコマンド-----「おい」　が入力されるとバスの時間表が出力される
+$pattern  = '/[#]{1}[0-9]{4}/';
+
+if($message_text == 'おい') {
   $return_message_text = implode(PHP_EOL,$busTime);
   sending_messages($accessToken, $replyToken, $message_type, $return_message_text);
 }
+if($message_text == '#おい') {
+  $return_message_text = implode(PHP_EOL,$holidayBusTime);
+  sending_messages($accessToken, $replyToken, $message_type, $return_message_text);
+}
+if(preg_match($pattern,$message_text)){  // 祝日日程の処理 
+  $message_text = str_replace('#', '', $message_text);
+  $busTimeResult = getTime($message_text, $holidayBusTime, "formater");
+  $return_message_text = check()."失礼します。" . PHP_EOL . "明日の練習" . formater($message_text) . "開始。" . PHP_EOL . $busTimeResult . "バスでお願いします。";
+  sending_messages($accessToken, $replyToken, $message_type, $return_message_text);
+}
 
-//メッセージタイプが「text」以外、数値以外、かつ英語などの文字列4文字の場合は何もせずに終了
+//メッセージタイプが「text」以外、かつ数値以外の場合、かつ4文字の場合は何もせずに終了
 if ($message_type != "text" && !is_numeric($message_text) && mb_strlen($message_text) == 4 ) exit;
 
-// バスの時間を求める処理-----入力された時間がバスの時刻表の時刻より過ぎた地点−1の地点（時刻）を出力。バスの時刻ー到着したい時間＝最適なバスの時間
+// バスの時間を求める処理 
 function getTime($message_text, $busTime, $callback)
 {
     $i = 0;
     $time = '';
+
+    // 入力された時間がバスの時刻表の時刻より過ぎた地点−1の地点（時刻）を出力。バスの時刻ー到着したい時間＝最適なバスの時間
     for ($i; $i <= count($busTime); $i++) {
         if ($message_text <= $busTime[$i]) { 
             $time = $busTime[$i - 1];
@@ -50,7 +78,10 @@ function getTime($message_text, $busTime, $callback)
     return $callback($time);
 };
 
-// 時刻のフォーマット-----ここでは入力された時間とバスの時刻の両方をフォーマットします
+// バスの時刻表 dbには接続していないため、ここに時刻表を入力して下さい
+
+
+// 時刻のフォーマット　ここでは入力された時間とバスの時刻の両方をフォーマットします
 function formater($formated)
 {
     if (mb_strlen($formated) == 4) {
@@ -68,7 +99,7 @@ $busTimeResult = getTime($message_text, $busTime, "formater");
 
 function check() {
     $now = date('H');
-    if($now >= 21) {
+    if($now >= 13) {
     return "夜分遅くに";
     }
 }
